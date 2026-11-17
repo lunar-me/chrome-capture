@@ -73,6 +73,14 @@ export interface CdpCommands {
     params: [{width: number; height: number; deviceScaleFactor: number; mobile: boolean}],
     returnType: void,
   ];
+  'HeadlessExperimental.enable': [
+    params: [],
+    returnType: void,
+  ];
+  'HeadlessExperimental.beginFrame': [
+    params: [{frameTimeTicks?: number; interval?: number; noDisplayUpdates?: boolean}?],
+    returnType: {hasDamage: boolean},
+  ];
   'Page.enable': [
     params: [],
     returnType: void,

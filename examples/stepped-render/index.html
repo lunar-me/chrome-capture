@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>chrome-capture stepped render demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #090b10;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    /* Zero-LSB full-viewport damage beacon: keeps Chromium's AnimatedContentSampler
+       locked on every beginFrame tick (0.0012 * 128 = 0.15 < 0.5 -> 0 bit change in 8-bit ARGB). */
+    #damage-beacon {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2147483647;
+      background: #808080;
+      opacity: 0.0008;
+      will-change: opacity;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="damage-beacon"></div>
+  <script>
+    const canvas = document.getElementById('scene');
+    const ctx = canvas.getContext('2d');
+    const beacon = document.getElementById('damage-beacon');
+
+    window.renderAt = function renderAt(frame, fps, totalFrames, busyMs = 0) {
+      if (busyMs > 0) {
+        const end = performance.now() + busyMs;
+        while (performance.now() < end) {}
+      }
+
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+
+      const t = frame / fps;
+      const progress = totalFrames > 1 ? frame / (totalFrames - 1) : 0;
+      const cx = w * 0.5;
+      const cy = h * 0.48;
+      const r = Math.min(w, h) * 0.31;
+
+      // Subtle radial backdrop
+      const bg = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, Math.max(w, h) * 0.72);
+      bg.addColorStop(0, '#141a2b');
+      bg.addColorStop(1, '#080a0f');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+
+      // Subtle grid
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.07)';
+      ctx.lineWidth = 1;
+      const step = Math.round(Math.min(w, h) / 12);
+      ctx.beginPath();
+      for (let x = step; x < w; x += step) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+      }
+      for (let y = step; y < h; y += step) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+      }
+      ctx.stroke();
+
+      // Deterministic orbital Lissajous ribbons
+      const ribbons = 3;
+      const hues = [190, 275, 340];
+      for (let k = 0; k < ribbons; k++) {
+        const phase = t * (1.8 + k * 0.35) + k * 1.1;
+        ctx.beginPath();
+        const samples = 240;
+        for (let i = 0; i <= samples; i++) {
+          const u = (i / samples) * Math.PI * 2;
+          const x = cx + Math.sin(u * (2 + k) + phase) * r * (1.15 - k * 0.14);
+          const y = cy + Math.cos(u * (3 + k) - phase * 0.85) * r * (0.88 - k * 0.1);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = `hsla(${hues[k]}, 95%, 64%, 0.75)`;
+        ctx.lineWidth = Math.max(2, Math.min(w, h) * 0.004);
+        ctx.stroke();
+      }
+
+      // Orbiting 1-tick strobe dots (makes any dropped frame immediately visible)
+      const dots = 24;
+      const activeDot = frame % dots;
+      for (let i = 0; i < dots; i++) {
+        const angle = (i / dots) * Math.PI * 2 - Math.PI / 2;
+        const dx = cx + Math.cos(angle) * (r * 1.28);
+        const dy = cy + Math.sin(angle) * (r * 1.28);
+        const isCurrent = i === activeDot;
+        ctx.beginPath();
+        ctx.arc(dx, dy, isCurrent ? 9 : 4, 0, Math.PI * 2);
+        ctx.fillStyle = isCurrent ? '#38bdf8' : 'rgba(148, 163, 184, 0.28)';
+        ctx.fill();
+      }
+
+      // HUD readout
+      const fontSize = Math.max(14, Math.round(Math.min(w, h) * 0.028));
+      ctx.font = `600 ${fontSize}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+      ctx.fillStyle = '#f8fafc';
+      ctx.textAlign = 'left';
+      ctx.fillText(
+        `FRAME ${String(frame + 1).padStart(4, '0')} / ${String(totalFrames).padStart(4, '0')}   t=${t.toFixed(3)}s   ${fps}fps stepped`,
+        32,
+        44,
+      );
+
+      // Bottom progress bar
+      const barPad = 32;
+      const barH = 8;
+      const barY = h - 36;
+      const barW = w - barPad * 2;
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.2)';
+      ctx.fillRect(barPad, barY, barW, barH);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(barPad, barY, barW * progress, barH);
+
+      // Flip zero-LSB damage beacon opacity on every frame
+      beacon.style.opacity = frame % 2 === 0 ? '0.0008' : '0.0012';
+    };
+  </script>
+</body>
+</html>
