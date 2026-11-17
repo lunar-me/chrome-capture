@@ -169,10 +169,11 @@ export class CdpScreenRecorder {
    *   readback down to 0.3-11.7 fps.
    */
   async start(options: ScreenRecordingOptions = {}): Promise<string> {
-    const {outputPath: _outputPath, ...cdpOptions} = options;
-    const request = {
+    const {outputPath: _outputPath, captureArea, ...cdpOptions} = options;
+    const request: Omit<ScreenRecordingOptions, 'outputPath'> = {
       frameRate: 60,
       ...cdpOptions,
+      ...(captureArea && captureArea !== 'target' ? {captureArea} : {}),
     };
     const {stream} = await this.session.send('Page.startScreenRecording', request);
     return stream;
@@ -337,6 +338,8 @@ export async function launchChrome(options: LaunchChromeOptions = {}): Promise<L
     (options.headless ?? true) ? '--headless=new' : '',
     '--no-first-run',
     '--no-default-browser-check',
+    '--password-store=basic',
+    '--use-mock-keychain',
     '--disable-background-timer-throttling',
     '--disable-renderer-backgrounding',
     '--disable-backgrounding-occluded-windows',

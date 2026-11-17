@@ -149,6 +149,7 @@ describe('CdpScreenRecorder', () => {
       maxWidth: 1920,
       maxHeight: 1080,
       audio: true,
+      captureArea: 'target',
       outputPath: '/tmp/stripped-from-cdp-wire.mp4',
     });
     assert.equal(handle, 'stream-42');
@@ -160,6 +161,12 @@ describe('CdpScreenRecorder', () => {
     const mp4 = await recorder.stop();
     assert.equal(mp4.toString('utf8'), 'ftypmp42-av01-opus');
     assert.equal(fakeSession.calls.at(-1)?.method, 'IO.close');
+
+    await recorder.start({captureArea: 'browserWindow'});
+    assert.deepEqual(fakeSession.calls.at(-1), {
+      method: 'Page.startScreenRecording',
+      params: {frameRate: 60, captureArea: 'browserWindow'},
+    });
   });
 
   it('safely handles IO.close failure without masking errors during stop()', async () => {

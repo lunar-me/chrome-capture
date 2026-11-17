@@ -86,8 +86,8 @@ Options:
   const frameRate = parseInt(parsed.values.fps ?? parsed.values.frameRate ?? '60', 10);
   const warmupMs = parseInt(parsed.values.warmup ?? '1000', 10);
   const rawArea = parsed.values['capture-area'];
-  const captureArea: ScreenRecordingOptions['captureArea'] =
-    rawArea === 'browserWindow' ? 'browserWindow' : 'target';
+  const captureArea: ScreenRecordingOptions['captureArea'] | undefined =
+    rawArea === 'browserWindow' ? 'browserWindow' : undefined;
   const audio = parsed.values.audio ? true : !parsed.values['no-audio'];
   const headful = Boolean(parsed.values.headful || parsed.values.headed);
   const headless = parsed.values.headless || (!headful && !(platform() === 'darwin' && frameRate > 60));
@@ -143,7 +143,7 @@ Options:
       audio,
       maxWidth: width,
       maxHeight: height,
-      captureArea,
+      ...(captureArea ? {captureArea} : {}),
       outputPath: outPath,
     });
 
